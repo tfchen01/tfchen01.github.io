@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+  <title>1A2B</title>
+  
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Document</title>
+  </head>
+  
+  <body>    
+    <h1> Computer's Guess </h1>
+    
+        <p style="font-size:25px;" id="txt_guess"> (Waiting...) </p>
+    
+    <h1> Your Response </h1>
+    
+        <select style="font-size:20px; width: 60px" width="50" id="selectA">
+            <option> 0 </option>
+            <option> 1 </option>
+            <option> 2 </option>
+            <option> 3 </option>
+            <option> 4 </option>
+        </select>
+        <font size="4.5"> &nbsp;&nbsp; A &nbsp;&nbsp; </font>
+        <select style="font-size:20px; width: 60px" width="50" id="selectB">
+            <option> 0 </option>
+            <option> 1 </option>
+            <option> 2 </option>
+            <option> 3 </option>
+            <option> 4 </option>
+        </select>
+        <font size="4.5"> &nbsp;&nbsp; B &nbsp;&nbsp; </font>
+        
+        <button type="button" style="font-size:20px" id="btn_send"> Send </button>
+        
+        <p style="font-size:25px;" id="txt_end_message"> &nbsp; </p>
+
+    <h1> History </h1>
+    
+        <p style="font-size:25px;" id="txt_history"> </p>
+        
+        <button disabled type="button" style="font-size:15px" id="btn_undo"> Undo </button>   
+  </body>
+  
+  <script>
+let BASE = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+let N = 4;
+
+// history 
+
+let record = new Array();
+class Record {
+    constructor(pool, guess, nA, nB) {
+      this.pool = pool;
+      this.guess = guess;
+      this.nA = nA;
+      this.nB = nB;
+    }
+    
+    get show() {
+        return toString(this.guess) + ": " + this.nA.toString() + "A" + this.nB.toString() + "B";
+    }
+}
+
+// setup
+
+let pool = new Set();
+setup();
+
+let guess = Array.from(pool)[Math.floor(Math.random() * pool.size)];
+document.getElementById('txt_guess').textContent = toString(guess);
+
+// interact - user send response
+document.getElementById('btn_send').onclick = function () {
+    // check legality
+    let nA = parseInt(document.getElementById('selectA').value);
+    let nB = parseInt(document.getElementById('selectB').value);
+    if (nA + nB > N) {
+        alert("Illegal guess! #A + #B should <= " + N.toString() + "!");
+        return;
+    }
+    
+    // record history
+    record.push( new Record(new Set(pool), guess, nA, nB) );
+    updateStatus();
+    
+    // if game over
+    if (nA == N) {
+        if (record.length == 1) {
+            document.getElementById('txt_end_message').textContent = "Game over. The computer uses 1 try to get the correct answer.";
+        }
+        else {
+            document.getElementById('txt_end_message').textContent = "Game over. The computer uses " + record.length.toString() + " tries to get the correct answer.";
+        }
+        
+        document.getElementById('btn_send').disabled = true;
+        document.getElementById('btn_undo').disabled = true;
+        return;
+    }
+    
+    // update guess
+    document.getElementById('txt_guess').textContent = "(Waiting...)";
+    document.getElementById('btn_send').disabled = true;
+    document.getElementById('btn_undo').disabled = true;
+    
+    pool = slice(pool, guess, nA, nB);
+    if (pool.size == 0) {
+        document.getElementById('txt_guess').textContent = "No solution found. Please check the history.";
+        document.getElementById('btn_send').disabled = true;
+        document.getElementById('btn_undo').disabled = false;
+        return;
+    }
+    
+    setTimeout(function(){
+        guess = decide(pool);
+        document.getElementById('txt_guess').textContent = toString(guess);
+        document.getElementById('btn_send').disabled = false;
+        document.getElementById('btn_undo').disabled = false;
+    }, 0);
+}
+
+// interact - user delete recent response
+document.getElementById('btn_undo').onclick = function () {
+    pool = record[record.length - 1].pool;
+    guess = record[record.length - 1].guess;
+    document.getElementById('txt_guess').textContent = toString(guess);
+    
+    record.pop();
+    updateStatus();
+    
+    // in case of no solution found
+    document.getElementById('txt_end_message').innerText = "\n";
+    document.getElementById('btn_send').disabled = false;
+}
+
+// Interaction ================================
+
+function updateStatus() {
+    document.getElementById('txt_history').innerText = showAll();
+    document.getElementById('btn_undo').disabled = (record.length == 0);
+}
+
+function showAll() {
+    let temp = "";
+    for (let i = 0; i < record.length; ++i) {
+        temp = temp + record[i].show + "\n";
+    }
+    return temp;
+}
+
+function toString(guess) {
+    let str = "";
+    for (let i = 0; i < guess.length; ++i) {
+        str += BASE[guess[i]].toString();
+    }
+    return str;
+}
+
+function computerGuess() {
+
+}
+
+// Coding ================================
+
+function setup() {
+    function isLegalIndexList(index_list) {
+        let temp = new Set();
+        for (let i = 0; i < index_list.length; ++i) {
+            if (temp.has(index_list[i])) 
+                return false;
+            temp.add(index_list[i]);
+        }
+        return true;
+    };
+    
+    let index_list = [];
+    for (let i = 0; i < N; ++i) {
+        index_list.push(0);
+    }
+    
+    while (true) {
+        if (isLegalIndexList(index_list)) {
+            pool.add(Array.from(index_list));
+        }
+        
+        let inc_index = index_list.length - 1;
+        while (inc_index >= 0) {
+            if (index_list[inc_index] == BASE.length - 1) {
+                index_list[inc_index] = 0;
+                inc_index--;
+            }
+            else {
+                index_list[inc_index]++;
+                break;
+            }
+        }
+        
+        if (inc_index == -1) {
+            break;
+        }
+    }
+}
+
+function count(possi, guess) {
+    let nA = 0;
+    let nB = 0;
+    for (let i = 0; i < N; ++i) {
+        for (let j = 0; j < N; ++j) {
+            if (possi[i] == guess[j]) {
+                if (i == j) {
+                    nA += 1;
+                }
+                else {
+                    nB += 1;
+                }
+                break;
+            }
+        }
+    }
+    return [nA, nB];
+}
+
+
+function slice(all_possi, guess, nA, nB) {
+    new_possi = new Set();
+    for (const item of all_possi) {
+        [mA, mB] = count(item, guess, nA, nB);
+        if (nA == mA && nB == mB) {
+            new_possi.add(item);
+        }
+    }
+    return new_possi;
+}
+
+function decide(all_possi) {
+    scores = {};
+    for (let item of all_possi) {
+        nAnBs = {};
+        for (const dual of all_possi) {
+            temp = count(item, dual);
+            if (nAnBs.hasOwnProperty(temp)) {
+                nAnBs[temp] = nAnBs[temp] + 1;
+            }
+            else {
+                nAnBs[temp] = 1;
+            }
+        }
+        scores[item] = Math.max(...Object.values(nAnBs)); 
+    }
+    let mini = Math.min(...Object.values(scores)); 
+    
+    candidate = new Set();
+    for (let item of all_possi) {
+        if (scores[item.toString()] == mini) {
+            candidate.add(item);
+        }
+    }
+    
+    return Array.from(candidate)[Math.floor(Math.random() * candidate.size)];
+}
+
+  </script>
+  
+</html>
